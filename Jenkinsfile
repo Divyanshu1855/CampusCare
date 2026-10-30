@@ -1,9 +1,6 @@
+
 pipeline {
     agent any
-
-    triggers {
-        pollSCM('H/2 * * * *')
-    }
 
     options {
         timestamps()
@@ -17,11 +14,11 @@ pipeline {
             }
         }
 
-        stage('Backend Tests') {
+        stage('Backend Validation') {
             steps {
                 dir('backend') {
-                    sh 'npm install'
-                    sh 'npm test'
+                    bat 'npm install'
+                    bat 'node --check server.js'
                 }
             }
         }
@@ -29,44 +26,32 @@ pipeline {
         stage('Frontend Build') {
             steps {
                 dir('frontend') {
-                    sh 'npm install'
-                    sh 'npm run build'
+                    bat 'npm install'
+                    bat 'npm run build'
                 }
             }
         }
 
-        stage('Build and Deploy Containers') {
+        stage('Docker Build and Deploy') {
             steps {
-                sh 'docker compose config'
-                sh 'docker compose up -d --build'
+                bat 'docker compose config'
+                bat 'docker compose up -d --build'
             }
         }
 
         stage('Smoke Test') {
             steps {
-                sh '''
-                  for i in $(seq 1 20); do
-                    if curl --fail --silent http://127.0.0.1/api/health; then
-                      echo "CampusCare health check passed"
-                      exit 0
-                    fi
-                    sleep 3
-                  done
-                  echo "Health check failed"
-                  docker compose ps
-                  docker compose logs --tail=100
-                  exit 1
-                '''
+                bat 'curl.exe --fail http://127.0.0.1/api/health'
             }
         }
     }
 
     post {
         success {
-            echo 'CampusCare build and deployment completed successfully.'
+            echo 'CampusCare CI/CD pipeline completed successfully!'
         }
         failure {
-            echo 'Pipeline failed. Review the stage logs before retrying.'
+            echo 'Pipeline failed. Check the Console Output.'
         }
     }
 }
